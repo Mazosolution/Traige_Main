@@ -1,8 +1,7 @@
 flask
 python-dotenv
-google-generativeai
-dropbox
 supabase
-apscheduler
 azure-storage-blob
-azure-identity
+google-generativeai
+apscheduler
+gunicorn
