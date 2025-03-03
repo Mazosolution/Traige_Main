@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRI Triage System</title>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --warning: #f72585;
+            --low: #4cc9f0;
+            --moderate: #4895ef;
+            --urgent: #f72585;
+            --critical: #b5179e;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border-radius: 8px;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f5ff;
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 100%;
+        }
+
+        .header {
+            background-color: white;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: var(--gray);
+            flex: 1;
+            text-align: center;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+            color: var(--primary);
+        }
+
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+            background-color: rgba(67, 97, 238, 0.1);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button#viewHistoryBtn {
+            background-color: var(--secondary);
+        }
+
+        button#checkSchedulerBtn {
+            background-color: var(--success);
+            color: var(--dark);
+        }
+
+        button#triggerJobBtn {
+            background-color: var(--warning);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result {
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background-color: white;
+            border: 1px solid #eaeaea;
+        }
+
+        .result:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .result-header {
+            padding: 15px;
+            border-bottom: 1px solid #eaeaea;
+            background-color: #f8f9fa;
+        }
+
+        .result-header h3 {
+            margin: 0;
+            font-size: 16px;
+            color: var(--dark);
+        }
+
+        .result-body {
+            padding: 15px;
+        }
+
+        .result-img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .result-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: white;
+        }
+
+        .severity-critical {
+            background-color: var(--critical);
+        }
+
+        .severity-urgent {
+            background-color: var(--urgent);
+        }
+
+        .severity-moderate {
+            background-color: var(--moderate);
+        }
+
+        .severity-low {
+            background-color: var(--low);
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .status-info {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .status-success {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .status-warning {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(247, 37, 133, 0.2);
+        }
+
+        .scheduler-status {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .scheduler-status h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .scheduler-status p {
+            margin-bottom: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            width: 120px;
+            color: var(--gray);
+        }
+
+        .status-value {
+            flex: 1;
+        }
+
+        .upload-form {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .upload-form h3 {
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .custom-file-input {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .file-input-button {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-button input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button label {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: var(--secondary);
+            color: white;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .file-input-button label:hover {
+            background-color: #342ebf;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .file-name {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            font-style: italic;
+        }
+
+        .upload-button {
+            background-color: var(--warning);
+        }
+
+        .upload-button:hover {
+            background-color: #e61c7a;
+        }
+
+        .spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(67, 97, 238, 0.2);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1001;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .tab {
+                border-bottom: none;
+                border-left: 3px solid transparent;
+            }
+            
+            .tab.active {
+                border-bottom: none;
+                border-left: 3px solid var(--primary);
+            }
+            
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>MRI Triage System</h1>
+        </header>
+        
+        <main class="main-content">
+            <div class="tabs">
+                <div class="tab active" data-tab="new-analysis">New Analysis</div>
+                <div class="tab" data-tab="upload">Upload Image</div>
+                <div class="tab" data-tab="history">History</div>
+                <div class="tab" data-tab="scheduler">Scheduler</div>
+            </div>
+            
+            <div class="tab-content active" id="new-analysis-content">
+                <div class="button-group">
+                    <button id="fetchImagesBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Fetch & Analyze Images
+                    </button>
+                </div>
+                <div id="statusMessage"></div>
+                <div id="results" class="result-grid"></div>
+            </div>
+            
+            <div class="tab-content" id="upload-content">
+                <div class="upload-form">
+                    <h3>Upload MRI Image for Analysis</h3>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="custom-file-input">
+                            <div class="file-input-button">
+                                <label for="fileInput">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                    Select MRI Image
+                                </label>
+                                <input type="file" id="fileInput" name="file" accept="image/*">
+                            </div>
+                            <div id="fileName" class="file-name">No file selected</div>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit" class="upload-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                Upload & Analyze
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div id="uploadStatusMessage"></div>
+                <div id="uploadResults" class="result-grid"></div>
+            </div>
+            
+            <div class="tab-content" id="history-content">
+                <div class="button-group">
+                    <button id="viewHistoryBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        View History
+                    </button>
+                </div>
+                <div id="historyResults" class="result-grid"></div>
+            </div>
+            
+            <div class="tab-content" id="scheduler-content">
+                <div class="button-group">
+                    <button id="checkSchedulerBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        Check Scheduler Status
+                    </button>
+                    <button id="triggerJobBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        Run Job Now
+                    </button>
+                </div>
+                <div id="schedulerStatus" class="scheduler-status">
+                    <h3>Scheduler Status</h3>
+                    <div class="status-item">
+                        <div class="status-label">Status:</div>
+                        <div class="status-value">Click "Check Scheduler Status" to view</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="overlay" id="loadingOverlay"></div>
+    <div class="spinner" id="loadingSpinner"></div>
+
+    <script>
+        // Tab switching functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Show corresponding content
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(`${tabId}-content`).classList.add('active');
+            });
+        });
+
+        // Helper function to show/hide loading spinner
+        function toggleLoading(show) {
+            document.getElementById("loadingOverlay").style.display = show ? "block" : "none";
+            document.getElementById("loadingSpinner").style.display = show ? "block" : "none";
+        }
+
+        // Helper function to determine severity class and label
+        function getSeverityInfo(rating) {
+            if (rating >= 9) return { class: "severity-critical", label: "Critical" };
+            if (rating >= 7) return { class: "severity-urgent", label: "Urgent" };
+            if (rating >= 4) return { class: "severity-moderate", label: "Moderate" };
+            return { class: "severity-low", label: "Low" };
+        }
+        
+        // Helper function to show status message
+        function showStatusMessage(message, type = 'info', elementId = 'statusMessage') {
+            const statusDiv = document.getElementById(elementId);
+            statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+        }
+        
+        // Update file name when a file is selected
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+            document.getElementById('fileName').textContent = fileName;
+        });
+        
+        // Helper function to create result card
+        function createResultCard(result) {
+            const severityInfo = getSeverityInfo(result.severity_rating);
+            return `
+                <div class="result">
+                    <div class="result-header">
+                        <h3>${result.image_name}</h3>
+                    </div>
+                    <div class="result-body">
+                        <img class="result-img" src="data:image/jpeg;base64,${result.image_data}" alt="${result.image_name}">
+                        <div class="result-details">
+                            <p>
+                                <strong>Severity:</strong> 
+                                <span class="severity-badge ${severityInfo.class}">${severityInfo.label} (${result.severity_rating})</span>
+                            </p>
+                            <p><strong>Comment:</strong> ${result.comment}</p>
+                            ${result.created_at ? `<p><strong>Date:</strong> ${new Date(result.created_at).toLocaleString()}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Handle file upload submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showStatusMessage('Please select a file to upload', 'warning', 'uploadStatusMessage');
+                return;
+            }
+            
+            // Check file type
+            const fileType = file.type;
+            if (!fileType.match('image.*')) {
+                showStatusMessage('Please upload an image file', 'warning', 'uploadStatusMessage');
+                return;
+            }
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Upload and process the image
+            toggleLoading(true);
+            showStatusMessage('Uploading and analyzing image...', 'info', 'uploadStatusMessage');
+            
+            try {
+                const response = await fetch('/upload-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatusMessage('Image uploaded and analyzed successfully!', 'success', 'uploadStatusMessage');
+                    
+                    // Display the result
+                    const result = data.result;
+                    const resultsDiv = document.getElementById('uploadResults');
+                    
+                    resultsDiv.innerHTML = createResultCard(result);
+                    
+                    // Reset the file input
+                    fileInput.value = '';
+                    document.getElementById('fileName').textContent = 'No file selected';
+                } else {
+                    showStatusMessage(`Error: ${data.error || "Unknown error"}`, 'warning', 'uploadStatusMessage');
+                }
+            } catch (error) {
+                showStatusMessage(`Error: ${error.message}`, 'warning', 'uploadStatusMessage');
+            } finally {
+                toggleLoading(false);
+            }
+        });
+        
+        // Fetch and analyze images
+        document.getElementById("fetchImagesBtn").addEventListener("click", async () => {
+            const resultsDiv = document.getElementById("results");
+            toggleLoading(true);
+            showStatusMessage("Fetching and analyzing images...", "info");
+
+            try {
+                const response = await fetch("/fetch-images", { method: "POST" });
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Check if we have a message about no new images
+                    if (data.message && data.message.includes("No new images")) {
+                        showStatusMessage(`${data.message}. All images have already been processed.`, "warning");
+                        resultsDiv.innerHTML = "";
+                        return;
+                    }
+                    
+                    // Display stats about processed and skipped images
+                    if (data.skipped_count > 0) {
+                        showStatusMessage(
+                            `Processed ${data.processed_count} new images. Skipped ${data.skipped_count} already processed images.`, 
+                            "success"
+                        );
+                    } else {
+                        showStatusMessage(`Processed ${data.processed_count} new images.`, "success");
+                    }
+                    
+                    const results = data.results || data; // Handle both formats
+                    
+                    if (results.length === 0) {
+                        resultsDiv.innerHTML = "<p>No new images to analyze.</p>";
+                    } else {
+                        let html = "";
+                        results.forEach(result => {
+                            html += createResultCard(result);
+                        });
+                        resultsDiv.innerHTML = html;
+
+                        // Save results to Supabase
+                        const saveResponse = await fetch("/save-history", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ results: results })
+                        });
+                        const saveResult = await saveResponse.json();
+                        console.log(saveResult.message);
+                    }
+                } else {
+                    showStatusMessage(`Error: ${data.error || "Unknown error"}`, "warning");
+                    resultsDiv.innerHTML = `<p>Error: ${data.error || "Unknown error"}</p>`;
+                }
+            } catch (error) {
+                showStatusMessage(`Error: ${error.message}`, "warning");
+                resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // View history
+        document.getElementById("viewHistoryBtn").addEventListener("click", async () => {
+            const historyDiv = document.getElementById("historyResults");
+            toggleLoading(true);
+
+            try {
+                const response = await fetch("/view-history");
+                const history = await response.json();
+
+                if (response.ok) {
+                    if (history.length === 0) {
+                        historyDiv.innerHTML = "<p>No history found.</p>";
+                    } else {
+                        let html = "";
+                        history.forEach(item => {
+                            html += createResultCard(item);
+                        });
+                        historyDiv.innerHTML = html;
+                    }
+                } else {
+                    historyDiv.innerHTML = `<p>Error: ${history.error || "Unknown error"}</p>`;
+                }
+            } catch (error) {
+                historyDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // Check scheduler status
+        document.getElementById("checkSchedulerBtn").addEventListener("click", async () => {
+            const statusDiv = document.getElementById("schedulerStatus");
+            toggleLoading(true);
+
+            try {
+                const response = await fetch("/scheduler-status");
+                const data = await response.json();
+
+                if (response.ok) {
+                    let html = `
+                        <h3>Scheduler Status</h3>
+                        <div class="status-item">
+                            <div class="status-label">Last Run:</div>
+                            <div class="status-value">${data.last_run ? new Date(data.last_run).toLocaleString() : "Never"}</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">Next Run:</div>
+                            <div class="status-value">${data.next_run ? new Date(data.next_run).toLocaleString() : "Not scheduled"}</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">Status:</div>
+                            <div class="status-value">${data.status}</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">Interval:</div>
+                            <div class="status-value">${data.interval} minutes</div>
+                        </div>
+                    `;
+                    statusDiv.innerHTML = html;
+                } else {
+                    statusDiv.innerHTML = `
+                        <h3>Scheduler Status</h3>
+                        <div class="status-item">
+                            <div class="status-label">Error:</div>
+                            <div class="status-value">${data.error || "Unknown error"}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <h3>Scheduler Status</h3>
+                    <div class="status-item">
+                        <div class="status-label">Error:</div>
+                        <div class="status-value">${error.message}</div>
+                    </div>
+                `;
+            } finally {
+                toggleLoading(false);
+            }
+        });
+
+        // Trigger job now
+        document.getElementById("triggerJobBtn").addEventListener("click", async () => {
+            toggleLoading(true);
+            showStatusMessage("Triggering job...", "info");
+
+            try {
+                const response = await fetch("/trigger-job", { method: "POST" });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatusMessage(`Job triggered successfully. ${data.message}`, "success");
+                    
+                    // Update the scheduler status
+                    document.getElementById("checkSchedulerBtn").click();
+                } else {
+                    showStatusMessage(`Error: ${data.error || "Unknown error"}`, "warning");
+                }
+            } catch (error) {
+                showStatusMessage(`Error: ${error.message}`, "warning");
+            } finally {
+                toggleLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>
