@@ -4,3 +4,4 @@ google-generativeai
 dropbox
 supabase
 apscheduler
+azure
